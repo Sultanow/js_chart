@@ -1,0 +1,5 @@
+/node_modules
+/app-chart/node_modules
+
+/app-chart/src/assets/batch.csv
+/app-chart/src/assets/batchgraph.csv
