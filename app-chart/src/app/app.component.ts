@@ -89,20 +89,10 @@ export class AppComponent implements OnInit {
     return edges;
   }
 
-  private searchSuccessors(id: String, edges: []) {
-    let result = [];
-    edges.forEach(e => {
-      if (e.predecessor == id) {
-        result.push(e.successor);
-      }
-    });
-    return result;
-  }
-
   /*
    * Directed Graph
    */
-  private constructGraph(nodes: Map, edges: []) {
+  private constructGraph(nodes: Map<String, any>, edges: any[]) {
     nodes.forEach((value: any, key: string) => {
       this.graphData.nodes.push({ id: key, name: key, label: value.shortName });
     });
@@ -114,7 +104,7 @@ export class AppComponent implements OnInit {
 
   private drawGraph(data: any) {
     var simulation = d3.forceSimulation<any, any>()
-      .force("link", d3.forceLink().id(function (d) { return d.id; }).distance(100).strength(1))
+      .force("link", d3.forceLink().id(function (d) { return d['id']; }).distance(100).strength(1))
       .force("charge", d3.forceManyBody())
       .force("center", d3.forceCenter(this.width / 2, this.height / 2));
 
@@ -146,14 +136,14 @@ export class AppComponent implements OnInit {
       .enter()
       .append("g")
       .call(d3.drag()
-        .on("start", function (event, d) {
+        .on("start", function (event, d: d3.SimulationLinkDatum<d3.SimulationNodeDatum>) {
           if (!event.active) simulation.alphaTarget(0.3).restart()
-          d.fx = d.x;
-          d.fy = d.y;
+          d['fx'] = d['x'];
+          d['fy'] = d['y'];
         })
         .on("drag", function (event, d) {
-          d.fx = event.x;
-          d.fy = event.y;
+          d['fx'] = event.x;
+          d['fy'] = event.y;
         }));
 
     node.append("rect")
@@ -185,6 +175,16 @@ export class AppComponent implements OnInit {
   /*
    * Tree
    */
+  private searchSuccessors(id: String, edges: any[]) {
+    let result = [];
+    edges.forEach(e => {
+      if (e.predecessor == id) {
+        result.push(e.successor);
+      }
+    });
+    return result;
+  }
+
   private constructTree(nodeSrc: any, nodeTgt: any) {
     if (typeof nodeSrc !== 'undefined') {
       nodeTgt.name = nodeSrc.shortName;
