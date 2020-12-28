@@ -1,0 +1,9 @@
+.search-btn{
+    margin: 0 0 2px 4px;
+    padding: 0!important;
+    min-width: 48px;
+}
+
+.search-btn mat-icon {
+    margin: 0 0 0 0;
+}
