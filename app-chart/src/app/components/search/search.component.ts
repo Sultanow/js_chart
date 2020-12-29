@@ -9,6 +9,7 @@ import { LoadChartDataService } from '../../services/load-chart-data/load-chart-
 export class SearchComponent implements OnInit {
 
   public static readonly SEARCH_RESET = "[RESET]";
+  public static readonly SEARCH_FILTER_NODEPS = "[FILTER_NODEPS]";
 
   @Input() searchTerm : string;
   @Output() searchEvent = new EventEmitter<string>();

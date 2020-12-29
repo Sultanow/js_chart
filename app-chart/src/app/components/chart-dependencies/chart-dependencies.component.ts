@@ -58,13 +58,16 @@ export class ChartDependenciesComponent implements OnInit, OnChanges {
       let treeData = {};
       let root = this.searchNode(this.searchTerm);
       this.constructTree(root, treeData);
-      console.log(treeData);
       this.drawTree(treeData);
     } else {
       if (this.svg_d3 != null) {
         this.drawGraph(this.graphData);
       }
     }
+  }
+
+  private showBatch(id: string) {
+    alert(id);
   }
 
   private drawGraph(data: any) {
@@ -100,6 +103,9 @@ export class ChartDependenciesComponent implements OnInit, OnChanges {
       .data(data.nodes)
       .enter()
       .append("g")
+      .on("click", (event, d: d3.SimulationLinkDatum<d3.SimulationNodeDatum>) => {
+        this.showBatch(d['id']);
+      })
       .call(d3.drag()
         .on("start", function (event, d: d3.SimulationLinkDatum<d3.SimulationNodeDatum>) {
           if (!event.active) simulation.alphaTarget(0.3).restart()
@@ -146,7 +152,7 @@ export class ChartDependenciesComponent implements OnInit, OnChanges {
   /*
    * Tree
    */
-  private getNode(id: string) {
+  private getNode(id: string) : d3.SimulationLinkDatum<d3.SimulationNodeDatum> {
     for (let node of this.graphData.nodes) {
       if (node.id == id) {
         return node;
@@ -155,16 +161,16 @@ export class ChartDependenciesComponent implements OnInit, OnChanges {
     return null;
   }
 
-  private searchNode(shortName: string) {
+  private searchNode(shortName: string) : d3.SimulationLinkDatum<d3.SimulationNodeDatum> {
     for (let node of this.graphData.nodes) {
-      if (node.label == shortName) {
+      if (node.label.toLowerCase() === shortName.toLowerCase()) {
         return node;
       }
     }
     return null;
   }
 
-  private searchSuccessors(id: string) {
+  private searchSuccessors(id: string) : d3.SimulationLinkDatum<d3.SimulationNodeDatum>[] {
     let result = [];
     this.graphData.links.forEach(e => {
       if (e.source.id == id) {
@@ -174,7 +180,7 @@ export class ChartDependenciesComponent implements OnInit, OnChanges {
     return result;
   }
 
-  private abbrev(label: string) {
+  private abbrev(label: string) : string {
     for (let [key, value] of ChartDependenciesComponent.LABEL_DICT) {
       let regexp = new RegExp(key);
       if (regexp.test(label)) {
@@ -187,7 +193,8 @@ export class ChartDependenciesComponent implements OnInit, OnChanges {
   private constructTree(nodeSrc: any, nodeTgt: any) {
     if (typeof nodeSrc !== 'undefined') {
       nodeTgt.label = nodeSrc.label;
-
+      nodeTgt.id = nodeSrc.id;
+      console.log(nodeSrc);
       let successors = this.searchSuccessors(nodeSrc.id);
       if (successors.length > 0) {
         nodeTgt.children = [];
@@ -236,7 +243,10 @@ export class ChartDependenciesComponent implements OnInit, OnChanges {
 
     const node = g.selectAll(".node").data(nodes.descendants()).enter().append("g")
       .attr("class", d => "node" + (d.children ? " node--internal" : " node--leaf"))
-      .attr("transform", function (d: any) { return "translate(" + d.y + "," + d.x + ")"; });
+      .attr("transform", function (d: any) { return "translate(" + d.y + "," + d.x + ")"; })
+      .on("click", (event, d: d3.SimulationLinkDatum<d3.SimulationNodeDatum>) => {
+        this.showBatch(d['data']['id']);
+      });
 
     node.append("rect")
       .attr("width", 40)

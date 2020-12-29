@@ -1,0 +1,14 @@
+
+div.d3-chart-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 600px;
+  border-radius: 8px;
+}
+
+#d3-chart-dependencies {
+    width: 100%;
+    height: 600px;
+}
