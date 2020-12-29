@@ -1,5 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Input, OnChanges } from '@angular/core';
 import { LoadChartDataService } from '../../services/load-chart-data/load-chart-data.service';
+import { SearchComponent } from '../search/search.component';
 import * as d3 from 'd3';
 
 /* 
@@ -16,28 +17,56 @@ import * as d3 from 'd3';
   styleUrls: ['./chart-dependencies.component.css']
 })
 
-export class ChartDependenciesComponent implements OnInit {
+export class ChartDependenciesComponent implements OnInit, OnChanges {
 
   constructor(private loadChartDataService: LoadChartDataService) {}
+  
+  public static readonly LABEL_DICT: Map<string, string> = new Map([
+      ["Parallelisierung", "Parall."],
+      ["Synchronisierung(.+)?", "Sync."],
+      ["Verzweigung(.+)?", "Verzw."],
+      ["Verbindung", "Verb."],
+      ["Aktivitätsende", "Ende"]
+    ]);
 
-  title = 'app-chart';
+  @Input() searchTerm: string;
+
+  private graphData: any;
 
   private margin = { top: 20, right: 120, bottom: 20, left: 120 };
   private width = 960 - this.margin.right - this.margin.left;
   private height = 600 - this.margin.top - this.margin.bottom;
-  private svg;
+  private svg_d3;
 
   async ngOnInit() {
-    this.svg = d3.select("svg#d3-chart-dependencies")
+    this.svg_d3 = d3.select("svg#d3-chart-dependencies")
       .attr("width", this.width + this.margin.left + this.margin.right)
       .attr("height", this.height + this.margin.top + this.margin.bottom);
-    //let graphData = await this.loadChartDataService.getGraphData();
-    this.loadChartDataService.currentMessage.subscribe(message => {
-      if (message != null) {
-        this.drawGraph(message);
+    
+    this.loadChartDataService.chartMessage.subscribe(graphData => {
+      if (graphData != null) {
+        this.graphData = graphData;
+        this.drawGraph(graphData);
       }});
   }
-  
+
+  ngOnChanges() {
+    this.clear();
+    if (this.searchTerm == SearchComponent.SEARCH_RESET) {
+      this.drawGraph(this.graphData);
+    } else if (this.searchTerm != null && this.searchTerm.length > 2) {
+      let treeData = {};
+      let root = this.searchNode(this.searchTerm);
+      this.constructTree(root, treeData);
+      console.log(treeData);
+      this.drawTree(treeData);
+    } else {
+      if (this.svg_d3 != null) {
+        this.drawGraph(this.graphData);
+      }
+    }
+  }
+
   private drawGraph(data: any) {
     var simulation = d3.forceSimulation<any, any>();
     simulation.force("link", d3.forceLink().id(function (d,i) { return d['id']; }).distance(100).strength(1))
@@ -45,20 +74,20 @@ export class ChartDependenciesComponent implements OnInit {
       .force("center", d3.forceCenter(this.width / 2, this.height / 2));
 
     // build the arrow.
-    this.svg.append("svg:defs").selectAll("marker")
+    this.svg_d3.append("svg:defs").selectAll("marker")
       .data(["end"])
       .enter().append("svg:marker")
       .attr("id", String)
       .attr("viewBox", "0 -5 10 10")
-      .attr("refX", 15)
-      .attr("refY", -1.5)
+      .attr("refX", 20)
+      .attr("refY", 0)
       .attr("markerWidth", 6)
       .attr("markerHeight", 6)
       .attr("orient", "auto")
       .append("svg:path")
       .attr("d", "M0,-5L10,0L0,5");
 
-    var link = this.svg.append("g").selectAll(".link")
+    var link = this.svg_d3.append("g").selectAll(".link")
       .attr("class", "link")
       .data(data.links)
       .enter()
@@ -67,7 +96,7 @@ export class ChartDependenciesComponent implements OnInit {
       .style("stroke-width", 2)
       .attr("marker-end", "url(#end)");
 
-    var node = this.svg.selectAll(".node")
+    var node = this.svg_d3.selectAll(".node")
       .data(data.nodes)
       .enter()
       .append("g")
@@ -108,53 +137,116 @@ export class ChartDependenciesComponent implements OnInit {
     simulation.force<d3.ForceLink<any, any>>("link").links(data.links);
   }
 
+  private clear() {
+    if (this.svg_d3 != null) {
+      this.svg_d3.selectAll("*").remove();
+    }
+  }
+  
   /*
    * Tree
    */
-  /*
-  private searchSuccessors(id: String, edges: any[]) {
+  private getNode(id: string) {
+    for (let node of this.graphData.nodes) {
+      if (node.id == id) {
+        return node;
+      }
+    }
+    return null;
+  }
+
+  private searchNode(shortName: string) {
+    for (let node of this.graphData.nodes) {
+      if (node.label == shortName) {
+        return node;
+      }
+    }
+    return null;
+  }
+
+  private searchSuccessors(id: string) {
     let result = [];
-    edges.forEach(e => {
-      if (e.predecessor == id) {
-        result.push(e.successor);
+    this.graphData.links.forEach(e => {
+      if (e.source.id == id) {
+        result.push(e.target);
       }
     });
     return result;
   }
 
-  private drawTree(data: any) {
+  private abbrev(label: string) {
+    for (let [key, value] of ChartDependenciesComponent.LABEL_DICT) {
+      let regexp = new RegExp(key);
+      if (regexp.test(label)) {
+        return value;
+      }
+    }
+    return label;
+  }
+
+  private constructTree(nodeSrc: any, nodeTgt: any) {
+    if (typeof nodeSrc !== 'undefined') {
+      nodeTgt.label = nodeSrc.label;
+
+      let successors = this.searchSuccessors(nodeSrc.id);
+      if (successors.length > 0) {
+        nodeTgt.children = [];
+        successors.forEach((e, i) => {
+          let successor = this.getNode(e.id);
+          nodeTgt.children.push(successor);
+          this.constructTree(successor, nodeTgt.children[i]);
+        });
+      }
+    }
+  }
+
+  private drawTree(treeData: any) {
     const treemap = d3.tree().size([this.height, this.width]);
-    console.log(data);
-    let nodes = d3.hierarchy(data, d => d.children);
+    let nodes = d3.hierarchy(treeData, d => d.children);
     nodes = treemap(nodes);
-    const g = this.svg.append("g").attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
+
+    // build the arrow.
+    this.svg_d3.append("svg:defs").selectAll("marker")
+      .data(["end"])
+      .enter().append("svg:marker")
+      .attr("id", String)
+      .attr("viewBox", "0 -5 10 10")
+      .attr("refX", 25)
+      .attr("refY", 0)
+      .attr("markerWidth", 6)
+      .attr("markerHeight", 6)
+      .attr("orient", "auto-start-reverse")
+      .append("svg:path")
+      .attr("d", "M0,-5L10,0L0,5");
+
+    const g = this.svg_d3.append("g").attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
 
     const link = g.selectAll(".link").data(nodes.descendants().slice(1)).enter().append("path")
       .attr("class", "link")
       .attr("fill", "none")
-      .style("stroke", d => d.data.level)
+      .style("stroke", d => "black")
+      .style("stroke-width", 2)
       .attr("d", function (d: any) {
-        return "M" + d.y + "," + d.x
-          + "C" + (d.y + d.parent.y) / 2 + "," + d.x
-          + " " + (d.y + d.parent.y) / 2 + "," + d.parent.x
-          + " " + d.parent.y + "," + d.parent.x;
-      });
+        return "M" + (d.y-0) + "," + d.x
+          + "C" + (d.y + d.parent.y) / 2 + "," + (d.x)
+          + " " + (d.y + d.parent.y) / 2 + "," + (d.parent.x)
+          + " " + (d.parent.y) + "," + (d.parent.x);
+      })
+      .attr("marker-start", "url(#end)");
 
     const node = g.selectAll(".node").data(nodes.descendants()).enter().append("g")
       .attr("class", d => "node" + (d.children ? " node--internal" : " node--leaf"))
       .attr("transform", function (d: any) { return "translate(" + d.y + "," + d.x + ")"; });
 
-    node.append("circle")
-      .attr("r", d => d.data.value)
-      .style("stroke", d => d.data.type)
-      .style("fill", d => d.data.level);
+    node.append("rect")
+      .attr("width", 40)
+      .attr("height", 20)
+      .attr("transform", function (d) { return "translate(-20,-10)" })
+      .style("fill", "lightgray");
 
     node.append("text")
-      .attr("dy", ".35em")
-      .attr("x", d => d.children ? (d.data.value + 5) * -1 : d.data.value + 5)
-      .attr("y", function (d: any) { return d.children && d.depth !== 0 ? -(d.data.value + 5) : d.data.value; })
-      .style("text-anchor", d => d.children ? "end" : "start")
-      .text(d => d.data.name);
+      .attr("x", -20)
+      .attr("dy", ".2em")
+      .text(d => this.abbrev(d.data.label));
   }
-  */
 }

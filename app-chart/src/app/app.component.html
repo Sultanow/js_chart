@@ -1,4 +1,4 @@
-<app-search></app-search>
+<app-search (searchEvent)="receiveSearchTerm($event)"></app-search>
 
-<app-chart-dependencies></app-chart-dependencies>
+<app-chart-dependencies [searchTerm]="searchTerm"></app-chart-dependencies>
 <app-chart-nodeps></app-chart-nodeps>

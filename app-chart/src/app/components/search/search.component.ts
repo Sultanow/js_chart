@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { LoadChartDataService } from '../../services/load-chart-data/load-chart-data.service';
 
 @Component({
@@ -8,18 +8,27 @@ import { LoadChartDataService } from '../../services/load-chart-data/load-chart-
 })
 export class SearchComponent implements OnInit {
 
+  public static readonly SEARCH_RESET = "[RESET]";
+
   @Input() searchTerm : string;
+  @Output() searchEvent = new EventEmitter<string>();
 
   constructor(private loadChartDataService: LoadChartDataService) { }
 
   ngOnInit() {
-    this.loadChartDataService.currentMessage.subscribe(message => {
-      console.log(message);});
+    this.loadChartDataService.chartMessage.subscribe(graphData => {
+      if (graphData != null) {
+        console.log("SearchComponent: graphData received " + graphData);
+      }});
   }
 
   search() {
     if (this.searchTerm != null && this.searchTerm.length > 2) {
-      alert(this.searchTerm);
+      this.searchEvent.emit(this.searchTerm)
     }
+  }
+
+  reset() {
+    this.searchEvent.emit(SearchComponent.SEARCH_RESET);
   }
 }

@@ -11,8 +11,14 @@ export class AppComponent implements OnInit {
 
   constructor(private loadChartDataService: LoadChartDataService) { }
 
+  public searchTerm: string;
+
   async ngOnInit() {
     let graphData = await this.loadChartDataService.getGraphData();
     this.loadChartDataService.nextMessage(graphData);
+  }
+
+  receiveSearchTerm($event): void {
+    this.searchTerm = $event;
   }
 }
