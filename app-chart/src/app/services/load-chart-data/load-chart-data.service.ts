@@ -65,7 +65,7 @@ export class LoadChartDataService {
 
   private constructGraph(nodes: Map<String, any>, edges: any[]) {
     nodes.forEach((value: any, key: string) => {
-      this.graphData.nodes.push({ id: key, name: key, label: value.shortName });
+      this.graphData.nodes.push({ id: key, name: value.name, label: value.shortName });
     });
 
     edges.forEach((e) => {

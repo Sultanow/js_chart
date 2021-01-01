@@ -1,4 +1,6 @@
 <app-search (searchEvent)="receiveSearchTerm($event)"></app-search>
 
-<app-chart-dependencies [searchTerm]="searchTerm"></app-chart-dependencies>
-<app-chart-nodeps></app-chart-nodeps>
+<div class="chart-splitpane">
+    <app-chart-dependencies [searchTerm]="searchTerm"></app-chart-dependencies>
+    <app-chart-nodeps [searchTerm]="searchTerm"></app-chart-nodeps>
+</div>

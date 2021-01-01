@@ -12,6 +12,7 @@ export class SearchComponent implements OnInit {
   public static readonly SEARCH_FILTER_NODEPS = "[FILTER_NODEPS]";
 
   @Input() searchTerm : string;
+  @Input() dependantBatchesOnly : boolean;
   @Output() searchEvent = new EventEmitter<string>();
 
   constructor(private loadChartDataService: LoadChartDataService) { }
@@ -31,5 +32,13 @@ export class SearchComponent implements OnInit {
 
   reset() {
     this.searchEvent.emit(SearchComponent.SEARCH_RESET);
+  }
+
+  toggleDependantBatches() {
+    if (this.dependantBatchesOnly) {
+      this.searchEvent.emit(SearchComponent.SEARCH_FILTER_NODEPS);
+    } else {
+      this.searchEvent.emit(SearchComponent.SEARCH_RESET);
+    }
   }
 }

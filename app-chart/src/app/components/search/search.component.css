@@ -7,3 +7,7 @@
 .search-btn mat-icon {
     margin: 0 0 0 0;
 }
+
+.search-toggle {
+    margin-left: 10px;
+}

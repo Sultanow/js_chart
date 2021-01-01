@@ -29,9 +29,12 @@ export class ChartDependenciesComponent implements OnInit, OnChanges {
       ["Aktivitätsende", "Ende"]
     ]);
 
+  public static readonly NODE_PARALLELISIERUNG = "fc1db4a1-dbbc-db62-a574-eb92da4a606b";
+  
   @Input() searchTerm: string;
 
   private graphData: any;
+  private graphDataNodeps: any;
 
   private margin = { top: 20, right: 120, bottom: 20, left: 120 };
   private width = 960 - this.margin.right - this.margin.left;
@@ -47,13 +50,17 @@ export class ChartDependenciesComponent implements OnInit, OnChanges {
       if (graphData != null) {
         this.graphData = graphData;
         this.drawGraph(graphData);
+        this.graphDataNodeps = ChartDependenciesComponent.getGraphDataNodeps(graphData);
+        console.log(this.graphData);
       }});
   }
 
   ngOnChanges() {
     this.clear();
-    if (this.searchTerm == SearchComponent.SEARCH_RESET) {
+    if (this.searchTerm === SearchComponent.SEARCH_RESET) {
       this.drawGraph(this.graphData);
+    } else if (this.searchTerm === SearchComponent.SEARCH_FILTER_NODEPS) {
+      this.drawGraph(this.graphDataNodeps);
     } else if (this.searchTerm != null && this.searchTerm.length > 2) {
       let treeData = {};
       let root = this.searchNode(this.searchTerm);
@@ -66,11 +73,17 @@ export class ChartDependenciesComponent implements OnInit, OnChanges {
     }
   }
 
-  private showBatch(id: string) {
-    alert(id);
+  private clear() {
+    if (this.svg_d3 != null) {
+      this.svg_d3.selectAll("*").remove();
+    }
   }
 
-  private drawGraph(data: any) {
+  private showBatch(id: string) {
+    alert(ChartDependenciesComponent.getNode(id, this.graphData)['name']);
+  }
+
+  private drawGraph(graphData: any) {
     var simulation = d3.forceSimulation<any, any>();
     simulation.force("link", d3.forceLink().id(function (d,i) { return d['id']; }).distance(100).strength(1))
       .force("charge", d3.forceManyBody())
@@ -92,7 +105,7 @@ export class ChartDependenciesComponent implements OnInit, OnChanges {
 
     var link = this.svg_d3.append("g").selectAll(".link")
       .attr("class", "link")
-      .data(data.links)
+      .data(graphData.links)
       .enter()
       .append("line")
       .attr("stroke", "black")
@@ -100,7 +113,7 @@ export class ChartDependenciesComponent implements OnInit, OnChanges {
       .attr("marker-end", "url(#end)");
 
     var node = this.svg_d3.selectAll(".node")
-      .data(data.nodes)
+      .data(graphData.nodes)
       .enter()
       .append("g")
       .on("click", (event, d: d3.SimulationLinkDatum<d3.SimulationNodeDatum>) => {
@@ -138,22 +151,52 @@ export class ChartDependenciesComponent implements OnInit, OnChanges {
       node
         .attr("transform", function (d) { return "translate(" + d.x + ", " + d.y + ")"; });
     }
-    simulation.nodes(data.nodes).on("tick", ticked);
-    simulation.nodes(data.nodes);
-    simulation.force<d3.ForceLink<any, any>>("link").links(data.links);
-  }
-
-  private clear() {
-    if (this.svg_d3 != null) {
-      this.svg_d3.selectAll("*").remove();
-    }
+    simulation.nodes(graphData.nodes).on("tick", ticked);
+    simulation.nodes(graphData.nodes);
+    simulation.force<d3.ForceLink<any, any>>("link").links(graphData.links);
   }
   
   /*
+   * Bubble Chart
+   */
+  public static getBatchesNodeps(graphData: any) : Array<string> {
+    let result: Array<string> = [];
+    for (let node of graphData.nodes) {
+      for (let link of graphData.links) {
+        if ((link.source.id === node.id && link.target.id === ChartDependenciesComponent.NODE_PARALLELISIERUNG)
+            && (ChartDependenciesComponent.searchPredecessors(node.id, graphData).length == 0)) {
+          result.push(node.id);
+        }
+      }
+    }
+    return result;
+  }
+
+  private static getGraphDataNodeps(graphData: any) : any {
+    let batchesNodeps = ChartDependenciesComponent.getBatchesNodeps(graphData);
+    let graphDataNodeps = {
+      inited: true,
+      nodes: [],
+      links: []
+    };
+    for (let node of graphData.nodes) {
+      if (!batchesNodeps.includes(node.id)) {
+        graphDataNodeps.nodes.push(node);
+      }
+    }
+    for (let link of graphData.links) {
+      if (!batchesNodeps.includes(link.source.id) && !batchesNodeps.includes(link.target.id)) {
+        graphDataNodeps.links.push(link);
+      }
+    }
+    return graphDataNodeps;
+  }
+
+  /*
    * Tree
    */
-  private getNode(id: string) : d3.SimulationLinkDatum<d3.SimulationNodeDatum> {
-    for (let node of this.graphData.nodes) {
+  private static getNode(id: string, graphData: any) : d3.SimulationLinkDatum<d3.SimulationNodeDatum> {
+    for (let node of graphData.nodes) {
       if (node.id == id) {
         return node;
       }
@@ -170,9 +213,21 @@ export class ChartDependenciesComponent implements OnInit, OnChanges {
     return null;
   }
 
+  private static searchPredecessors(id: string, graphData: any) : d3.SimulationLinkDatum<d3.SimulationNodeDatum>[] {
+    let result = [];
+    graphData.links.forEach(e => {
+      //before drawing the structure is e.[source|target]
+      if (e.target.id === id) {
+        result.push(e.source);
+      }
+    });
+    return result;
+  }
+
   private searchSuccessors(id: string) : d3.SimulationLinkDatum<d3.SimulationNodeDatum>[] {
     let result = [];
     this.graphData.links.forEach(e => {
+      //before drawing the structure is e.[source|target].id
       if (e.source.id == id) {
         result.push(e.target);
       }
@@ -194,12 +249,11 @@ export class ChartDependenciesComponent implements OnInit, OnChanges {
     if (typeof nodeSrc !== 'undefined') {
       nodeTgt.label = nodeSrc.label;
       nodeTgt.id = nodeSrc.id;
-      console.log(nodeSrc);
       let successors = this.searchSuccessors(nodeSrc.id);
       if (successors.length > 0) {
         nodeTgt.children = [];
         successors.forEach((e, i) => {
-          let successor = this.getNode(e.id);
+          let successor = ChartDependenciesComponent.getNode(e['id'], this.graphData);
           nodeTgt.children.push(successor);
           this.constructTree(successor, nodeTgt.children[i]);
         });

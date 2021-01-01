@@ -8,4 +8,5 @@
     <button class="search-btn" mat-stroked-button (click)="searchTerm='';reset()">
         <mat-icon>undo</mat-icon>
     </button>
+    <mat-slide-toggle class="search-toggle" [(ngModel)]="dependantBatchesOnly" (change)="toggleDependantBatches()">Nur Batchketten</mat-slide-toggle>
 </mat-toolbar>
