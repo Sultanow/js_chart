@@ -3,3 +3,6 @@
 
 /app-chart/src/assets/batch.csv
 /app-chart/src/assets/batchgraph.csv
+python/notebooks/batchgraph.csv
+python/notebooks/batch.csv
+python/notebooks/Batchablauf.xml
